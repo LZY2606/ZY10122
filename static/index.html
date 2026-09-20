@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>声学定位离线审查</title>
+<style>
+  :root {
+    --bg: #0f141a; --panel: #171e27; --line: #2a3645; --ink: #dce6f0;
+    --muted: #8ea2b8; --accent: #4ea1ff; --warn: #f0b35e; --bad: #ef6b6b;
+    --ok: #6fd08a; --refl: #c08bff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 13px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  header { padding: 10px 16px; border-bottom: 1px solid var(--line);
+           display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  select, button, input { background: #10171f; color: var(--ink);
+           border: 1px solid var(--line); border-radius: 5px; padding: 5px 9px; font-size: 13px; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  main { display: grid; grid-template-columns: minmax(520px, 1.5fr) minmax(360px, 1fr);
+         gap: 12px; padding: 12px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+           padding: 10px 12px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 13px; color: var(--muted);
+              text-transform: uppercase; letter-spacing: .06em; }
+  canvas { display: block; background: #0b1016; border-radius: 6px; }
+  #timeline { height: 150px; }
+  #map { height: 460px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #202a36; }
+  th { color: var(--muted); font-weight: 500; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 10px; font-size: 11px; }
+  .tag.direct { background: #1f3a2a; color: var(--ok); }
+  .tag.reflection { background: #382a48; color: var(--refl); }
+  .tag.onset { background: #1d2f44; color: var(--accent); }
+  .tag.bad { background: #44232a; color: var(--bad); }
+  .cand { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px;
+          cursor: pointer; background: #121a23; }
+  .cand.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .cand .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+  .cand .kind { font-weight: 600; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .resid { font-size: 11px; max-height: 150px; overflow: auto; margin-top: 6px; }
+  .actions button { margin: 3px 4px 0 0; padding: 3px 8px; font-size: 12px; }
+  .legend span { margin-right: 12px; font-size: 11px; color: var(--muted); }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; }
+  #status { font-size: 12px; color: var(--muted); }
+  code { color: var(--warn); }
+</style>
+</head>
+<body>
+<header>
+  <h1>声学定位 · 离线审查</h1>
+  <label>事件
+    <select id="eventSelect"></select>
+  </label>
+  <button id="solveBtn">重算候选</button>
+  <span id="status"></span>
+  <span style="flex:1"></span>
+  <span class="muted">坐标 m · 时间 s · 声速 m/s · 区间半开 [start, end)</span>
+</header>
+<main>
+  <div>
+    <div class="panel">
+      <h2>空间视图 — 站点 / 延迟双曲线 / 交会区</h2>
+      <canvas id="map"></canvas>
+      <div class="legend" style="margin-top:6px">
+        <span><i class="dot" style="background:#4ea1ff"></i>站点</span>
+        <span><i class="dot" style="background:#f0b35e"></i>声源候选</span>
+        <span><i class="dot" style="background:#6fd08a"></i>双曲线(CCF)</span>
+        <span><i class="dot" style="background:#c08bff"></i>反射路径</span>
+        <span><i class="dot" style="background:#ef6b6b"></i>欠定区域/域外</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>站点时线 — 本地时钙与校正时间（半开窗）</h2>
+      <canvas id="timeline"></canvas>
+    </div>
+    <div class="panel">
+      <h2>观测与互相关延迟</h2>
+      <div style="max-height:220px;overflow:auto"><table id="obsTable"></table></div>
+    </div>
+  </div>
+  <div>
+    <div class="panel">
+      <h2>候选排名（固定输入下稳定）</h2>
+      <div id="candidates"></div>
+    </div>
+    <div class="panel">
+      <h2>派生证据（只追加，重算不改原观测）</h2>
+      <div id="evidence"></div>
+      <div class="actions" style="margin-top:6px">
+        <button id="excludeBtn">排除所选反射路径</button>
+        <button id="lockBtn">锁定所选时钟段</button>
+        <button id="keepBtn">保留前两名为不可分</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>作业指纹与状态</h2>
+      <div id="jobs" class="mono" style="font-size:11px;max-height:160px;overflow:auto"></div>
+    </div>
+  </div>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
