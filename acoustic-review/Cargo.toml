@@ -1,0 +1,20 @@
+[package]
+name = "acoustic-review"
+version = "0.1.0"
+edition = "2021"
+description = "Offline pair-wise acoustic event review workbench (TDOA / clock segments / multipath)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.31", features = ["bundled"] }
+tiny_http = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+
+[[bin]]
+name = "acoustic-review"
+path = "src/main.rs"
+
+[profile.release]
+panic = "unwind"

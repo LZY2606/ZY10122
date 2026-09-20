@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Acoustic Review Workbench</title>
+<link rel="stylesheet" href="/app.css" />
+</head>
+<body>
+<header>
+  <h1>Pair-wise Acoustic Review</h1>
+  <div class="units">
+    coordinates <code>m</code> · time <code>s</code> · delays <code>s</code> ·
+    sound speed <code id="speed-readout">343 m/s</code>
+  </div>
+</header>
+
+<main>
+  <aside class="sidebar">
+    <label for="event-select">事件</label>
+    <select id="event-select"></select>
+    <div class="meta" id="event-meta"></div>
+
+    <section class="panel">
+      <h2>站点时线 <small>半开 [t₀,t₁)</small></h2>
+      <canvas id="timeline" width="320" height="220"></canvas>
+      <div id="timeline-legend" class="legend"></div>
+    </section>
+
+    <section class="panel">
+      <h2>审查操作</h2>
+      <div class="actions">
+        <button id="btn-solve">重新求解（仅追加证据）</button>
+        <button id="btn-lock">锁定该事件时钟校正</button>
+        <button id="btn-keep">保留两个不可分位置</button>
+      </div>
+      <ul id="evidence-list" class="evidence"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>作业</h2>
+      <ul id="job-list" class="jobs"></ul>
+    </section>
+  </aside>
+
+  <section class="map-panel">
+    <canvas id="space" width="760" height="560"></canvas>
+    <div id="map-hint" class="hint">
+      点击多径边可排除该反射路径；点击候选可查看残差分解。
+    </div>
+  </section>
+
+  <aside class="rightbar">
+    <section class="panel">
+      <h2>候选排名</h2>
+      <ol id="candidate-list" class="candidates"></ol>
+    </section>
+    <section class="panel" id="residual-panel">
+      <h2>残差分解</h2>
+      <div id="residual-body" class="residuals">选择一个候选…</div>
+    </section>
+  </aside>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>
